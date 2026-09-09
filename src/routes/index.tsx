@@ -408,6 +408,14 @@ function Index() {
           onSubmit={addItem}
         />
       )}
+
+      {pendingDelete && (
+        <ConfirmDeleteDialog
+          item={pendingDelete}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void deleteItem(pendingDelete)}
+        />
+      )}
     </div>
   );
 }
@@ -511,14 +519,25 @@ function ItemCard({
             <Mail className="h-3.5 w-3.5 shrink-0" /> {item.contact}
           </p>
         </div>
-        {!claimed && (
+        <div className="mt-3 flex gap-2">
+          {!claimed && (
+            <button
+              onClick={onClaim}
+              className="flex-1 rounded-lg border border-primary/30 bg-accent px-3 py-2 text-sm font-semibold text-accent-foreground transition hover:bg-primary hover:text-primary-foreground"
+            >
+              Mark as Claimed
+            </button>
+          )}
           <button
-            onClick={onClaim}
-            className="mt-3 w-full rounded-lg border border-primary/30 bg-accent px-3 py-2 text-sm font-semibold text-accent-foreground transition hover:bg-primary hover:text-primary-foreground"
+            onClick={onDelete}
+            aria-label={`Delete ${item.title}`}
+            title="Delete this item"
+            className={`${claimed ? "w-full" : "shrink-0"} inline-flex items-center justify-center gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive hover:text-destructive-foreground`}
           >
-            Mark as Claimed
+            <Trash2 className="h-4 w-4" />
+            {claimed && <span>Delete</span>}
           </button>
-        )}
+        </div>
       </div>
     </article>
   );
