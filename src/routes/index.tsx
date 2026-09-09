@@ -17,6 +17,8 @@ import {
   ImagePlus,
 
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -93,73 +95,46 @@ const CATEGORY_ICON: Record<Category, typeof Laptop> = {
   Other: Package,
 };
 
-const SEED_ITEMS: Item[] = [
-  {
-    id: "seed-1",
-    title: "Blue Hydro Flask water bottle",
-    description: "32oz blue bottle with a robotics club sticker on the side. Left it after lecture.",
-    category: "Other",
-    location: "Science Building, Room 204",
-    status: "Lost",
-    contact: "maya.r@campus.edu",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-  },
-  {
-    id: "seed-2",
-    title: "AirPods Pro case (no earbuds)",
-    description: "White charging case found under a bench near the quad. Has a small scratch on the lid.",
-    category: "Electronics",
-    location: "Central Quad, east benches",
-    status: "Found",
-    contact: "555-0142",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString(),
-  },
-  {
-    id: "seed-3",
-    title: "Green campus hoodie, size M",
-    description: "University hoodie with a small coffee stain on the cuff. Turned in at the front desk.",
-    category: "Clothing",
-    location: "Student Center front desk",
-    status: "Found",
-    contact: "frontdesk@campus.edu",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 70).toISOString(),
-  },
-  {
-    id: "seed-4",
-    title: "Student ID card — J. Park",
-    description: "Found on the floor near the library printers. Can verify with student number.",
-    category: "Documents",
-    location: "Library, 2nd floor",
-    status: "Claimed",
-    contact: "lib-desk@campus.edu",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
-  },
-  {
-    id: "seed-5",
-    title: "Silver Casio watch",
-    description: "Metal band, slightly worn. Lost somewhere between the gym and the parking lot.",
-    category: "Accessories",
-    location: "Gym / Lot C",
-    status: "Lost",
-    contact: "d.osei@campus.edu",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
-  },
-];
-
-const STORAGE_KEY = "campus-lost-found-items";
-
-function loadItems(): Item[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch {
-    // ignore
-  }
-  return SEED_ITEMS;
+interface ItemRow {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  location: string | null;
+  status: string | null;
+  photo_url: string | null;
+  contact: string | null;
+  posted_by: string | null;
+  created_at: string;
 }
+
+function rowToItem(row: ItemRow): Item {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description ?? "",
+    category: (CATEGORIES.includes(row.category as Category)
+      ? (row.category as Category)
+      : "Other") as Category,
+    location: row.location ?? "",
+    status: (["Lost", "Found", "Claimed"].includes(row.status ?? "")
+      ? (row.status as Status)
+      : "Lost") as Status,
+    contact: row.contact ?? "",
+    date: row.created_at,
+    ...(row.photo_url ? { photo: row.photo_url } : {}),
+  };
+}
+
+async function fetchItems(): Promise<Item[]> {
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as ItemRow[]).map(rowToItem);
+}
+
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -185,27 +160,30 @@ function StatusBadge({ status }: { status: Status }) {
 }
 
 function Index() {
-  const [items, setItems] = useState<Item[]>(SEED_ITEMS);
-  const [hydrated, setHydrated] = useState(false);
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"All" | Category>("All");
   const [status, setStatus] = useState<"All" | Status>("All");
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  useEffect(() => {
-    setItems(loadItems());
-    setHydrated(true);
-  }, []);
+  const refresh = async () => {
+    try {
+      setItems(await fetchItems());
+      setLoadError("");
+    } catch {
+      setLoadError("Couldn't load items right now. Please refresh the page.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (hydrated) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-      } catch {
-        // storage full (usually large photos) — keep app usable
-      }
-    }
-  }, [items, hydrated]);
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -224,14 +202,37 @@ function Index() {
   const active = filtered.filter((i) => i.status !== "Claimed");
   const resolved = filtered.filter((i) => i.status === "Claimed");
 
-  const claimItem = (id: string) =>
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status: "Claimed" } : i)));
+  const claimItem = async (id: string) => {
+    const prev = items;
+    setItems((cur) => cur.map((i) => (i.id === id ? { ...i, status: "Claimed" } : i)));
+    const { error } = await supabase.from("items").update({ status: "Claimed" }).eq("id", id);
+    if (error) {
+      setItems(prev);
+      setLoadError("Couldn't mark that item as claimed. Please try again.");
+    }
+  };
 
-  const addItem = (data: Omit<Item, "id" | "date">) =>
-    setItems((prev) => [
-      { ...data, id: crypto.randomUUID(), date: new Date().toISOString() },
-      ...prev,
-    ]);
+  const addItem = async (data: Omit<Item, "id" | "date">) => {
+    const { data: inserted, error } = await supabase
+      .from("items")
+      .insert({
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        location: data.location,
+        status: data.status,
+        contact: data.contact,
+        photo_url: data.photo ?? null,
+      })
+      .select()
+      .single();
+    if (error || !inserted) {
+      setLoadError("Couldn't post that item. Please try again.");
+      return;
+    }
+    setItems((prev) => [rowToItem(inserted as ItemRow), ...prev]);
+  };
+
 
   return (
     <div className="min-h-screen">
@@ -299,8 +300,26 @@ function Index() {
           </div>
         </div>
 
+        {loadError && (
+          <div
+            role="alert"
+            className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive"
+          >
+            {loadError}
+          </div>
+        )}
+
+        {loading && (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-64 animate-pulse rounded-2xl border bg-card" />
+            ))}
+          </div>
+        )}
+
         {/* Empty state */}
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
+
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-card py-20 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
               <SearchX className="h-7 w-7 text-muted-foreground" />
@@ -456,7 +475,7 @@ function ReportDialog({
 }: {
   existingItems: Item[];
   onClose: () => void;
-  onSubmit: (data: Omit<Item, "id" | "date">) => void;
+  onSubmit: (data: Omit<Item, "id" | "date">) => Promise<void>;
 }) {
   const [form, setForm] = useState({
     title: "",
@@ -504,8 +523,11 @@ function ReportDialog({
     }
   };
 
-  const doSubmit = () => {
-    onSubmit({
+  const [saving, setSaving] = useState(false);
+
+  const doSubmit = async () => {
+    setSaving(true);
+    await onSubmit({
       title: form.title.trim(),
       description: form.description.trim() || "No description provided.",
       category: form.category,
@@ -514,6 +536,7 @@ function ReportDialog({
       contact: form.contact.trim(),
       ...(photo ? { photo } : {}),
     });
+    setSaving(false);
     onClose();
   };
 
@@ -530,7 +553,7 @@ function ReportDialog({
       setDuplicates(dupes);
       return;
     }
-    doSubmit();
+    void doSubmit();
   };
 
   const inputCls =
@@ -721,17 +744,19 @@ function ReportDialog({
           {duplicates ? (
             <button
               type="button"
-              onClick={doSubmit}
-              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+              disabled={saving}
+              onClick={() => void doSubmit()}
+              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
-              Submit Anyway
+              {saving ? "Posting…" : "Submit Anyway"}
             </button>
           ) : (
             <button
               type="submit"
-              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+              disabled={saving}
+              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
-              Post Item
+              {saving ? "Posting…" : "Post Item"}
             </button>
           )}
         </div>
