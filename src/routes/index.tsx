@@ -158,27 +158,30 @@ function StatusBadge({ status }: { status: Status }) {
 }
 
 function Index() {
-  const [items, setItems] = useState<Item[]>(SEED_ITEMS);
-  const [hydrated, setHydrated] = useState(false);
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"All" | Category>("All");
   const [status, setStatus] = useState<"All" | Status>("All");
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  useEffect(() => {
-    setItems(loadItems());
-    setHydrated(true);
-  }, []);
+  const refresh = async () => {
+    try {
+      setItems(await fetchItems());
+      setLoadError("");
+    } catch {
+      setLoadError("Couldn't load items right now. Please refresh the page.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (hydrated) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-      } catch {
-        // storage full (usually large photos) — keep app usable
-      }
-    }
-  }, [items, hydrated]);
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
