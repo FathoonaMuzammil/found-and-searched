@@ -312,7 +312,13 @@ function Index() {
         Campus Lost &amp; Found — a community board for students. No account needed.
       </footer>
 
-      {dialogOpen && <ReportDialog onClose={() => setDialogOpen(false)} onSubmit={addItem} />}
+      {dialogOpen && (
+        <ReportDialog
+          existingItems={items}
+          onClose={() => setDialogOpen(false)}
+          onSubmit={addItem}
+        />
+      )}
     </div>
   );
 }
@@ -360,10 +366,49 @@ function ItemCard({ item, onClaim }: { item: Item; onClaim: () => void }) {
   );
 }
 
+function findDuplicates(form: {
+  title: string;
+  category: Category;
+  location: string;
+  status: "Lost" | "Found";
+}, items: Item[]): Item[] {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const titleWords = norm(form.title)
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 2);
+  return items.filter((item) => {
+    if (item.status === "Claimed") return false;
+    if (item.category !== form.category) return false;
+    const itemTitle = norm(item.title);
+    const titleMatch =
+      itemTitle === norm(form.title) ||
+      (titleWords.length > 0 &&
+        titleWords.some((w) => itemTitle.includes(w)) &&
+        (itemTitle.includes(norm(form.title)) || norm(form.title).includes(itemTitle))) ||
+      (titleWords.length > 1 &&
+        titleWords.filter((w) => itemTitle.includes(w)).length >=
+          Math.ceil(titleWords.length / 2));
+    if (!titleMatch) return false;
+    const itemLoc = norm(item.location);
+    const formLoc = norm(form.location);
+    return (
+      itemLoc === formLoc ||
+      itemLoc.includes(formLoc) ||
+      formLoc.includes(itemLoc) ||
+      itemLoc
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length > 2)
+        .some((w) => formLoc.includes(w))
+    );
+  });
+}
+
 function ReportDialog({
+  existingItems,
   onClose,
   onSubmit,
 }: {
+  existingItems: Item[];
   onClose: () => void;
   onSubmit: (data: Omit<Item, "id" | "date">) => void;
 }) {
@@ -376,6 +421,7 @@ function ReportDialog({
     contact: "",
   });
   const [error, setError] = useState("");
+  const [duplicates, setDuplicates] = useState<Item[] | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -383,15 +429,12 @@ function ReportDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const set = (key: keyof typeof form) => (value: string) =>
+  const set = (key: keyof typeof form) => (value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
+    setDuplicates(null);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title.trim() || !form.location.trim() || !form.contact.trim()) {
-      setError("Please fill in the title, location, and contact info.");
-      return;
-    }
+  const doSubmit = () => {
     onSubmit({
       title: form.title.trim(),
       description: form.description.trim() || "No description provided.",
@@ -401,6 +444,21 @@ function ReportDialog({
       contact: form.contact.trim(),
     });
     onClose();
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title.trim() || !form.location.trim() || !form.contact.trim()) {
+      setError("Please fill in the title, location, and contact info.");
+      return;
+    }
+    setError("");
+    const dupes = findDuplicates(form, existingItems);
+    if (dupes.length > 0) {
+      setDuplicates(dupes);
+      return;
+    }
+    doSubmit();
   };
 
   const inputCls =
@@ -515,6 +573,26 @@ function ReportDialog({
             />
           </div>
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+
+          {duplicates && (
+            <div
+              role="alert"
+              className="rounded-lg border border-found/40 bg-found/10 p-4 text-sm"
+            >
+              <p className="font-semibold text-found-foreground">
+                A similar item already exists — do you still want to submit?
+              </p>
+              <ul className="mt-2 space-y-1 text-muted-foreground">
+                {duplicates.slice(0, 3).map((d) => (
+                  <li key={d.id} className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    <span className="font-medium text-foreground">{d.title}</span>
+                    <span>· {d.location}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex gap-3">
@@ -525,12 +603,22 @@ function ReportDialog({
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-          >
-            Post Item
-          </button>
+          {duplicates ? (
+            <button
+              type="button"
+              onClick={doSubmit}
+              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              Submit Anyway
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              Post Item
+            </button>
+          )}
         </div>
       </form>
     </div>
