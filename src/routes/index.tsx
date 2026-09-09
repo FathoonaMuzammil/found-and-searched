@@ -209,7 +209,9 @@ function Index() {
     const { error } = await supabase.from("items").update({ status: "Claimed" }).eq("id", id);
     if (error) {
       setItems(prev);
-      setLoadError("Couldn't mark that item as claimed. Please try again.");
+      setLoadError(
+        `Couldn't mark that item as claimed: ${error.message}${error.hint ? ` (${error.hint})` : ""}`,
+      );
     }
   };
 
