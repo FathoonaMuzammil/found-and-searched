@@ -597,8 +597,10 @@ function ReportDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.location.trim() || !form.contact.trim()) {
-      setError("Please fill in the title, location, and contact info.");
+    const errors = validateForm(form);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError("Please fix the highlighted fields before posting.");
       return;
     }
     setError("");
