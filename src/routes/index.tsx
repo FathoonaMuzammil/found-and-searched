@@ -169,6 +169,7 @@ function Index() {
   const [category, setCategory] = useState<"All" | Category>("All");
   const [status, setStatus] = useState<"All" | Status>("All");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Item | null>(null);
 
   const refresh = async () => {
     try {
