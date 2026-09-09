@@ -14,6 +14,8 @@ import {
   X,
   SearchX,
   Mail,
+  ImagePlus,
+
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
