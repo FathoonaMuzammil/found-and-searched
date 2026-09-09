@@ -429,8 +429,10 @@ function ReportDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const set = (key: keyof typeof form) => (value: string) =>
+  const set = (key: keyof typeof form) => (value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
+    setDuplicates(null);
+  };
 
   const doSubmit = () => {
     onSubmit({
