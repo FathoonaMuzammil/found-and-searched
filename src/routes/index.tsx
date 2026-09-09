@@ -14,6 +14,8 @@ import {
   X,
   SearchX,
   Mail,
+  ImagePlus,
+
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -48,7 +50,38 @@ interface Item {
   status: Status;
   contact: string;
   date: string; // ISO
+  photo?: string; // data URL
 }
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
+
+/** Read an image file, downscale it, and return a compact data URL. */
+function fileToCompressedDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read that file."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("That file isn't a readable image."));
+      img.onload = () => {
+        const MAX = 900;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(String(reader.result));
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 
 const CATEGORIES: Category[] = ["Electronics", "Clothing", "Documents", "Accessories", "Other"];
 
@@ -166,7 +199,11 @@ function Index() {
 
   useEffect(() => {
     if (hydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      } catch {
+        // storage full (usually large photos) — keep app usable
+      }
     }
   }, [items, hydrated]);
 
@@ -332,9 +369,18 @@ function ItemCard({ item, onClaim }: { item: Item; onClaim: () => void }) {
         claimed ? "grayscale" : ""
       }`}
     >
-      <div className="flex h-36 items-center justify-center bg-secondary">
-        <Icon className="h-12 w-12 text-primary/60" aria-label={`${item.category} icon`} />
-      </div>
+      {item.photo ? (
+        <img
+          src={item.photo}
+          alt={item.title}
+          loading="lazy"
+          className="h-36 w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-36 items-center justify-center bg-secondary">
+          <Icon className="h-12 w-12 text-primary/60" aria-label={`${item.category} icon`} />
+        </div>
+      )}
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold leading-snug">{item.title}</h3>
@@ -422,6 +468,9 @@ function ReportDialog({
   });
   const [error, setError] = useState("");
   const [duplicates, setDuplicates] = useState<Item[] | null>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState("");
+  const [photoLoading, setPhotoLoading] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -434,6 +483,27 @@ function ReportDialog({
     setDuplicates(null);
   };
 
+  const handlePhoto = async (file: File | undefined) => {
+    setPhotoError("");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Please choose an image file (JPG, PNG, GIF or WebP).");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError("That image is larger than 5MB. Please pick a smaller one.");
+      return;
+    }
+    setPhotoLoading(true);
+    try {
+      setPhoto(await fileToCompressedDataUrl(file));
+    } catch {
+      setPhotoError("Sorry, that image couldn't be loaded.");
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
+
   const doSubmit = () => {
     onSubmit({
       title: form.title.trim(),
@@ -442,9 +512,11 @@ function ReportDialog({
       location: form.location.trim(),
       status: form.status,
       contact: form.contact.trim(),
+      ...(photo ? { photo } : {}),
     });
     onClose();
   };
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -571,6 +643,49 @@ function ReportDialog({
               value={form.contact}
               onChange={(e) => set("contact")(e.target.value)}
             />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium" htmlFor="r-photo">
+              Photo (optional)
+            </label>
+            {photo ? (
+              <div className="flex items-center gap-3 rounded-lg border p-3">
+                <img
+                  src={photo}
+                  alt="Selected item preview"
+                  className="h-20 w-20 rounded-md object-cover"
+                />
+                <div className="flex-1 text-sm text-muted-foreground">Photo ready to post</div>
+                <button
+                  type="button"
+                  onClick={() => setPhoto(null)}
+                  className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition hover:bg-muted"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="r-photo"
+                className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed px-3 py-4 text-sm text-muted-foreground transition hover:bg-muted/50"
+              >
+                <ImagePlus className="h-5 w-5 shrink-0 text-primary/70" />
+                <span>{photoLoading ? "Loading photo…" : "Add a photo — JPG or PNG, up to 5MB"}</span>
+              </label>
+            )}
+            <input
+              id="r-photo"
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => {
+                void handlePhoto(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+            {photoError && (
+              <p className="mt-1.5 text-sm font-medium text-destructive">{photoError}</p>
+            )}
           </div>
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
 
