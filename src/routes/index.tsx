@@ -548,6 +548,12 @@ function ReportDialog({
   const set = (key: keyof typeof form) => (value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setDuplicates(null);
+    setFieldErrors((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key as keyof FieldErrors];
+      return next;
+    });
   };
 
   const handlePhoto = async (file: File | undefined) => {
