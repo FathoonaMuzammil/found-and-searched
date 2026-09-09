@@ -93,73 +93,46 @@ const CATEGORY_ICON: Record<Category, typeof Laptop> = {
   Other: Package,
 };
 
-const SEED_ITEMS: Item[] = [
-  {
-    id: "seed-1",
-    title: "Blue Hydro Flask water bottle",
-    description: "32oz blue bottle with a robotics club sticker on the side. Left it after lecture.",
-    category: "Other",
-    location: "Science Building, Room 204",
-    status: "Lost",
-    contact: "maya.r@campus.edu",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-  },
-  {
-    id: "seed-2",
-    title: "AirPods Pro case (no earbuds)",
-    description: "White charging case found under a bench near the quad. Has a small scratch on the lid.",
-    category: "Electronics",
-    location: "Central Quad, east benches",
-    status: "Found",
-    contact: "555-0142",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString(),
-  },
-  {
-    id: "seed-3",
-    title: "Green campus hoodie, size M",
-    description: "University hoodie with a small coffee stain on the cuff. Turned in at the front desk.",
-    category: "Clothing",
-    location: "Student Center front desk",
-    status: "Found",
-    contact: "frontdesk@campus.edu",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 70).toISOString(),
-  },
-  {
-    id: "seed-4",
-    title: "Student ID card — J. Park",
-    description: "Found on the floor near the library printers. Can verify with student number.",
-    category: "Documents",
-    location: "Library, 2nd floor",
-    status: "Claimed",
-    contact: "lib-desk@campus.edu",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
-  },
-  {
-    id: "seed-5",
-    title: "Silver Casio watch",
-    description: "Metal band, slightly worn. Lost somewhere between the gym and the parking lot.",
-    category: "Accessories",
-    location: "Gym / Lot C",
-    status: "Lost",
-    contact: "d.osei@campus.edu",
-    date: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
-  },
-];
-
-const STORAGE_KEY = "campus-lost-found-items";
-
-function loadItems(): Item[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch {
-    // ignore
-  }
-  return SEED_ITEMS;
+interface ItemRow {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  location: string | null;
+  status: string | null;
+  photo_url: string | null;
+  contact: string | null;
+  posted_by: string | null;
+  created_at: string;
 }
+
+function rowToItem(row: ItemRow): Item {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description ?? "",
+    category: (CATEGORIES.includes(row.category as Category)
+      ? (row.category as Category)
+      : "Other") as Category,
+    location: row.location ?? "",
+    status: (["Lost", "Found", "Claimed"].includes(row.status ?? "")
+      ? (row.status as Status)
+      : "Lost") as Status,
+    contact: row.contact ?? "",
+    date: row.created_at,
+    ...(row.photo_url ? { photo: row.photo_url } : {}),
+  };
+}
+
+async function fetchItems(): Promise<Item[]> {
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as ItemRow[]).map(rowToItem);
+}
+
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
