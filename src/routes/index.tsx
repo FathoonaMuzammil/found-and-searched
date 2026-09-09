@@ -533,6 +533,7 @@ function ReportDialog({
     contact: "",
   });
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [duplicates, setDuplicates] = useState<Item[] | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState("");
