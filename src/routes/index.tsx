@@ -432,12 +432,7 @@ function ReportDialog({
   const set = (key: keyof typeof form) => (value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title.trim() || !form.location.trim() || !form.contact.trim()) {
-      setError("Please fill in the title, location, and contact info.");
-      return;
-    }
+  const doSubmit = () => {
     onSubmit({
       title: form.title.trim(),
       description: form.description.trim() || "No description provided.",
@@ -447,6 +442,21 @@ function ReportDialog({
       contact: form.contact.trim(),
     });
     onClose();
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title.trim() || !form.location.trim() || !form.contact.trim()) {
+      setError("Please fill in the title, location, and contact info.");
+      return;
+    }
+    setError("");
+    const dupes = findDuplicates(form, existingItems);
+    if (dupes.length > 0) {
+      setDuplicates(dupes);
+      return;
+    }
+    doSubmit();
   };
 
   const inputCls =
