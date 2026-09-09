@@ -172,8 +172,9 @@ function Index() {
     try {
       setItems(await fetchItems());
       setLoadError("");
-    } catch {
-      setLoadError("Couldn't load items right now. Please refresh the page.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setLoadError(`Couldn't load items right now: ${msg}`);
     } finally {
       setLoading(false);
     }
