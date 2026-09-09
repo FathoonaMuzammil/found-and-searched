@@ -365,9 +365,18 @@ function ItemCard({ item, onClaim }: { item: Item; onClaim: () => void }) {
         claimed ? "grayscale" : ""
       }`}
     >
-      <div className="flex h-36 items-center justify-center bg-secondary">
-        <Icon className="h-12 w-12 text-primary/60" aria-label={`${item.category} icon`} />
-      </div>
+      {item.photo ? (
+        <img
+          src={item.photo}
+          alt={item.title}
+          loading="lazy"
+          className="h-36 w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-36 items-center justify-center bg-secondary">
+          <Icon className="h-12 w-12 text-primary/60" aria-label={`${item.category} icon`} />
+        </div>
+      )}
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold leading-snug">{item.title}</h3>
