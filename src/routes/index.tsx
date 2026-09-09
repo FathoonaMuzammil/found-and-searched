@@ -298,8 +298,26 @@ function Index() {
           </div>
         </div>
 
+        {loadError && (
+          <div
+            role="alert"
+            className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive"
+          >
+            {loadError}
+          </div>
+        )}
+
+        {loading && (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-64 animate-pulse rounded-2xl border bg-card" />
+            ))}
+          </div>
+        )}
+
         {/* Empty state */}
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
+
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-card py-20 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
               <SearchX className="h-7 w-7 text-muted-foreground" />
