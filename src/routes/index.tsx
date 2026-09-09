@@ -366,7 +366,12 @@ function Index() {
           <section aria-label="Lost and found items">
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {active.map((item) => (
-                <ItemCard key={item.id} item={item} onClaim={() => claimItem(item.id)} />
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  onClaim={() => claimItem(item.id)}
+                  onDelete={() => setPendingDelete(item)}
+                />
               ))}
             </div>
           </section>
@@ -380,7 +385,12 @@ function Index() {
             </h2>
             <div className="grid gap-5 opacity-70 sm:grid-cols-2 lg:grid-cols-3">
               {resolved.map((item) => (
-                <ItemCard key={item.id} item={item} onClaim={() => claimItem(item.id)} />
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  onClaim={() => claimItem(item.id)}
+                  onDelete={() => setPendingDelete(item)}
+                />
               ))}
             </div>
           </section>
@@ -402,7 +412,67 @@ function Index() {
   );
 }
 
-function ItemCard({ item, onClaim }: { item: Item; onClaim: () => void }) {
+function ConfirmDeleteDialog({
+  item,
+  onCancel,
+  onConfirm,
+}: {
+  item: Item;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Confirm delete"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl"
+      >
+        <h2 className="text-lg font-bold">Are you sure you want to delete this item?</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          &ldquo;{item.title}&rdquo; will be removed for everyone. This can&rsquo;t be undone.
+        </p>
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="flex-1 rounded-lg bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:bg-destructive/90"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ItemCard({
+  item,
+  onClaim,
+  onDelete,
+}: {
+  item: Item;
+  onClaim: () => void;
+  onDelete: () => void;
+}) {
   const Icon = CATEGORY_ICON[item.category];
   const claimed = item.status === "Claimed";
   return (
