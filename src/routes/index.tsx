@@ -644,6 +644,49 @@ function ReportDialog({
               onChange={(e) => set("contact")(e.target.value)}
             />
           </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium" htmlFor="r-photo">
+              Photo (optional)
+            </label>
+            {photo ? (
+              <div className="flex items-center gap-3 rounded-lg border p-3">
+                <img
+                  src={photo}
+                  alt="Selected item preview"
+                  className="h-20 w-20 rounded-md object-cover"
+                />
+                <div className="flex-1 text-sm text-muted-foreground">Photo ready to post</div>
+                <button
+                  type="button"
+                  onClick={() => setPhoto(null)}
+                  className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition hover:bg-muted"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="r-photo"
+                className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed px-3 py-4 text-sm text-muted-foreground transition hover:bg-muted/50"
+              >
+                <ImagePlus className="h-5 w-5 shrink-0 text-primary/70" />
+                <span>{photoLoading ? "Loading photo…" : "Add a photo — JPG or PNG, up to 5MB"}</span>
+              </label>
+            )}
+            <input
+              id="r-photo"
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => {
+                void handlePhoto(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+            {photoError && (
+              <p className="mt-1.5 text-sm font-medium text-destructive">{photoError}</p>
+            )}
+          </div>
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
 
           {duplicates && (
