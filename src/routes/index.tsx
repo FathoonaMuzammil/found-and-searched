@@ -475,7 +475,7 @@ function ReportDialog({
 }: {
   existingItems: Item[];
   onClose: () => void;
-  onSubmit: (data: Omit<Item, "id" | "date">) => void;
+  onSubmit: (data: Omit<Item, "id" | "date">) => Promise<void>;
 }) {
   const [form, setForm] = useState({
     title: "",
