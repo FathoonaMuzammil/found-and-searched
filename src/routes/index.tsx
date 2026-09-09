@@ -553,7 +553,7 @@ function ReportDialog({
       setDuplicates(dupes);
       return;
     }
-    doSubmit();
+    void doSubmit();
   };
 
   const inputCls =
