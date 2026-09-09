@@ -614,6 +614,8 @@ function ReportDialog({
 
   const inputCls =
     "w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30";
+  const fieldCls = (key: keyof FieldErrors) =>
+    `${inputCls} ${fieldErrors[key] ? "border-destructive focus:border-destructive focus:ring-destructive/30" : ""}`;
 
   return (
     <div
@@ -647,24 +649,38 @@ function ReportDialog({
             </label>
             <input
               id="r-title"
-              className={inputCls}
+              className={fieldCls("title")}
               placeholder="e.g. Black North Face backpack"
+              aria-invalid={!!fieldErrors.title}
+              aria-describedby={fieldErrors.title ? "r-title-err" : undefined}
               value={form.title}
               onChange={(e) => set("title")(e.target.value)}
             />
+            {fieldErrors.title && (
+              <p id="r-title-err" className="mt-1.5 text-sm font-medium text-destructive">
+                {fieldErrors.title}
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium" htmlFor="r-desc">
-              Description
+              Description *
             </label>
             <textarea
               id="r-desc"
               rows={3}
-              className={inputCls}
-              placeholder="Any identifying details…"
+              className={fieldCls("description")}
+              placeholder="Any identifying details… (at least 10 characters)"
+              aria-invalid={!!fieldErrors.description}
+              aria-describedby={fieldErrors.description ? "r-desc-err" : undefined}
               value={form.description}
               onChange={(e) => set("description")(e.target.value)}
             />
+            {fieldErrors.description && (
+              <p id="r-desc-err" className="mt-1.5 text-sm font-medium text-destructive">
+                {fieldErrors.description}
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -705,11 +721,18 @@ function ReportDialog({
             </label>
             <input
               id="r-loc"
-              className={inputCls}
+              className={fieldCls("location")}
               placeholder="e.g. Library, 3rd floor"
+              aria-invalid={!!fieldErrors.location}
+              aria-describedby={fieldErrors.location ? "r-loc-err" : undefined}
               value={form.location}
               onChange={(e) => set("location")(e.target.value)}
             />
+            {fieldErrors.location && (
+              <p id="r-loc-err" className="mt-1.5 text-sm font-medium text-destructive">
+                {fieldErrors.location}
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium" htmlFor="r-contact">
