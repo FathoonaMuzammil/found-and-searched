@@ -312,7 +312,13 @@ function Index() {
         Campus Lost &amp; Found — a community board for students. No account needed.
       </footer>
 
-      {dialogOpen && <ReportDialog onClose={() => setDialogOpen(false)} onSubmit={addItem} />}
+      {dialogOpen && (
+        <ReportDialog
+          existingItems={items}
+          onClose={() => setDialogOpen(false)}
+          onSubmit={addItem}
+        />
+      )}
     </div>
   );
 }
@@ -360,10 +366,49 @@ function ItemCard({ item, onClaim }: { item: Item; onClaim: () => void }) {
   );
 }
 
+function findDuplicates(form: {
+  title: string;
+  category: Category;
+  location: string;
+  status: "Lost" | "Found";
+}, items: Item[]): Item[] {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const titleWords = norm(form.title)
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 2);
+  return items.filter((item) => {
+    if (item.status === "Claimed") return false;
+    if (item.category !== form.category) return false;
+    const itemTitle = norm(item.title);
+    const titleMatch =
+      itemTitle === norm(form.title) ||
+      (titleWords.length > 0 &&
+        titleWords.some((w) => itemTitle.includes(w)) &&
+        (itemTitle.includes(norm(form.title)) || norm(form.title).includes(itemTitle))) ||
+      (titleWords.length > 1 &&
+        titleWords.filter((w) => itemTitle.includes(w)).length >=
+          Math.ceil(titleWords.length / 2));
+    if (!titleMatch) return false;
+    const itemLoc = norm(item.location);
+    const formLoc = norm(form.location);
+    return (
+      itemLoc === formLoc ||
+      itemLoc.includes(formLoc) ||
+      formLoc.includes(itemLoc) ||
+      itemLoc
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length > 2)
+        .some((w) => formLoc.includes(w))
+    );
+  });
+}
+
 function ReportDialog({
+  existingItems,
   onClose,
   onSubmit,
 }: {
+  existingItems: Item[];
   onClose: () => void;
   onSubmit: (data: Omit<Item, "id" | "date">) => void;
 }) {
@@ -376,6 +421,7 @@ function ReportDialog({
     contact: "",
   });
   const [error, setError] = useState("");
+  const [duplicates, setDuplicates] = useState<Item[] | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
