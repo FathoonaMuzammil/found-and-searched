@@ -200,14 +200,37 @@ function Index() {
   const active = filtered.filter((i) => i.status !== "Claimed");
   const resolved = filtered.filter((i) => i.status === "Claimed");
 
-  const claimItem = (id: string) =>
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status: "Claimed" } : i)));
+  const claimItem = async (id: string) => {
+    const prev = items;
+    setItems((cur) => cur.map((i) => (i.id === id ? { ...i, status: "Claimed" } : i)));
+    const { error } = await supabase.from("items").update({ status: "Claimed" }).eq("id", id);
+    if (error) {
+      setItems(prev);
+      setLoadError("Couldn't mark that item as claimed. Please try again.");
+    }
+  };
 
-  const addItem = (data: Omit<Item, "id" | "date">) =>
-    setItems((prev) => [
-      { ...data, id: crypto.randomUUID(), date: new Date().toISOString() },
-      ...prev,
-    ]);
+  const addItem = async (data: Omit<Item, "id" | "date">) => {
+    const { data: inserted, error } = await supabase
+      .from("items")
+      .insert({
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        location: data.location,
+        status: data.status,
+        contact: data.contact,
+        photo_url: data.photo ?? null,
+      })
+      .select()
+      .single();
+    if (error || !inserted) {
+      setLoadError("Couldn't post that item. Please try again.");
+      return;
+    }
+    setItems((prev) => [rowToItem(inserted as ItemRow), ...prev]);
+  };
+
 
   return (
     <div className="min-h-screen">
