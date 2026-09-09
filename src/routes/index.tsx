@@ -468,6 +468,53 @@ function findDuplicates(form: {
   });
 }
 
+/** At least one alphabetic word of 2+ letters (rejects "1234", "@#$%", "a b c"). */
+function hasRealWord(value: string) {
+  return /[A-Za-z]{2,}/.test(value);
+}
+
+type FieldErrors = Partial<Record<"title" | "description" | "location" | "contact", string>>;
+
+function validateForm(form: {
+  title: string;
+  description: string;
+  location: string;
+  contact: string;
+}): FieldErrors {
+  const errors: FieldErrors = {};
+  const title = form.title.trim();
+  const description = form.description.trim();
+  const location = form.location.trim();
+  const contact = form.contact.trim();
+
+  if (!title) errors.title = "Please add a title.";
+  else if (title.length < 3) errors.title = "Title must be at least 3 characters.";
+  else if (!hasRealWord(title))
+    errors.title = "Please use real words — a title can't be only numbers or symbols.";
+  else if (title.length > 100) errors.title = "Title must be under 100 characters.";
+
+  if (!description) errors.description = "Please add a description.";
+  else if (description.length < 10)
+    errors.description = "Description must be at least 10 characters.";
+  else if (!hasRealWord(description))
+    errors.description = "Please describe the item in real words.";
+  else if (description.length > 1000)
+    errors.description = "Description must be under 1000 characters.";
+
+  if (!location) errors.location = "Please add where it was lost or found.";
+  else if (location.length < 3) errors.location = "Location must be at least 3 characters.";
+  else if (!hasRealWord(location))
+    errors.location = "Please use real words for the location.";
+
+  const isEmail = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(contact);
+  const isPhone = /^[+()\d][\d\s().-]{6,}$/.test(contact);
+  if (!contact) errors.contact = "Please add an email or phone number.";
+  else if (!isEmail && !isPhone)
+    errors.contact = "Enter a valid email address or phone number.";
+
+  return errors;
+}
+
 function ReportDialog({
   existingItems,
   onClose,
@@ -486,6 +533,7 @@ function ReportDialog({
     contact: "",
   });
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [duplicates, setDuplicates] = useState<Item[] | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState("");
@@ -500,6 +548,12 @@ function ReportDialog({
   const set = (key: keyof typeof form) => (value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setDuplicates(null);
+    setFieldErrors((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key as keyof FieldErrors];
+      return next;
+    });
   };
 
   const handlePhoto = async (file: File | undefined) => {
@@ -529,7 +583,7 @@ function ReportDialog({
     setSaving(true);
     await onSubmit({
       title: form.title.trim(),
-      description: form.description.trim() || "No description provided.",
+      description: form.description.trim(),
       category: form.category,
       location: form.location.trim(),
       status: form.status,
@@ -543,8 +597,10 @@ function ReportDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.location.trim() || !form.contact.trim()) {
-      setError("Please fill in the title, location, and contact info.");
+    const errors = validateForm(form);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError("Please fix the highlighted fields before posting.");
       return;
     }
     setError("");
@@ -558,6 +614,8 @@ function ReportDialog({
 
   const inputCls =
     "w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30";
+  const fieldCls = (key: keyof FieldErrors) =>
+    `${inputCls} ${fieldErrors[key] ? "border-destructive focus:border-destructive focus:ring-destructive/30" : ""}`;
 
   return (
     <div
@@ -591,24 +649,38 @@ function ReportDialog({
             </label>
             <input
               id="r-title"
-              className={inputCls}
+              className={fieldCls("title")}
               placeholder="e.g. Black North Face backpack"
+              aria-invalid={!!fieldErrors.title}
+              aria-describedby={fieldErrors.title ? "r-title-err" : undefined}
               value={form.title}
               onChange={(e) => set("title")(e.target.value)}
             />
+            {fieldErrors.title && (
+              <p id="r-title-err" className="mt-1.5 text-sm font-medium text-destructive">
+                {fieldErrors.title}
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium" htmlFor="r-desc">
-              Description
+              Description *
             </label>
             <textarea
               id="r-desc"
               rows={3}
-              className={inputCls}
-              placeholder="Any identifying details…"
+              className={fieldCls("description")}
+              placeholder="Any identifying details… (at least 10 characters)"
+              aria-invalid={!!fieldErrors.description}
+              aria-describedby={fieldErrors.description ? "r-desc-err" : undefined}
               value={form.description}
               onChange={(e) => set("description")(e.target.value)}
             />
+            {fieldErrors.description && (
+              <p id="r-desc-err" className="mt-1.5 text-sm font-medium text-destructive">
+                {fieldErrors.description}
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -649,11 +721,18 @@ function ReportDialog({
             </label>
             <input
               id="r-loc"
-              className={inputCls}
+              className={fieldCls("location")}
               placeholder="e.g. Library, 3rd floor"
+              aria-invalid={!!fieldErrors.location}
+              aria-describedby={fieldErrors.location ? "r-loc-err" : undefined}
               value={form.location}
               onChange={(e) => set("location")(e.target.value)}
             />
+            {fieldErrors.location && (
+              <p id="r-loc-err" className="mt-1.5 text-sm font-medium text-destructive">
+                {fieldErrors.location}
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium" htmlFor="r-contact">
@@ -661,11 +740,18 @@ function ReportDialog({
             </label>
             <input
               id="r-contact"
-              className={inputCls}
+              className={fieldCls("contact")}
               placeholder="e.g. you@campus.edu"
+              aria-invalid={!!fieldErrors.contact}
+              aria-describedby={fieldErrors.contact ? "r-contact-err" : undefined}
               value={form.contact}
               onChange={(e) => set("contact")(e.target.value)}
             />
+            {fieldErrors.contact && (
+              <p id="r-contact-err" className="mt-1.5 text-sm font-medium text-destructive">
+                {fieldErrors.contact}
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium" htmlFor="r-photo">
