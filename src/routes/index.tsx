@@ -717,11 +717,18 @@ function ReportDialog({
             </label>
             <input
               id="r-contact"
-              className={inputCls}
+              className={fieldCls("contact")}
               placeholder="e.g. you@campus.edu"
+              aria-invalid={!!fieldErrors.contact}
+              aria-describedby={fieldErrors.contact ? "r-contact-err" : undefined}
               value={form.contact}
               onChange={(e) => set("contact")(e.target.value)}
             />
+            {fieldErrors.contact && (
+              <p id="r-contact-err" className="mt-1.5 text-sm font-medium text-destructive">
+                {fieldErrors.contact}
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium" htmlFor="r-photo">
