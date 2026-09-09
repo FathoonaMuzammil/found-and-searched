@@ -744,17 +744,19 @@ function ReportDialog({
           {duplicates ? (
             <button
               type="button"
-              onClick={doSubmit}
-              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+              disabled={saving}
+              onClick={() => void doSubmit()}
+              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
-              Submit Anyway
+              {saving ? "Posting…" : "Submit Anyway"}
             </button>
           ) : (
             <button
               type="submit"
-              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+              disabled={saving}
+              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
-              Post Item
+              {saving ? "Posting…" : "Post Item"}
             </button>
           )}
         </div>
