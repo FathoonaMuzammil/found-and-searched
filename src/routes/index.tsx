@@ -199,7 +199,11 @@ function Index() {
 
   useEffect(() => {
     if (hydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      } catch {
+        // storage full (usually large photos) — keep app usable
+      }
     }
   }, [items, hydrated]);
 
