@@ -217,6 +217,19 @@ function Index() {
     }
   };
 
+  const deleteItem = async (item: Item) => {
+    const prev = items;
+    setItems((cur) => cur.filter((i) => i.id !== item.id));
+    setPendingDelete(null);
+    const { error } = await supabase.from("items").delete().eq("id", item.id);
+    if (error) {
+      setItems(prev);
+      toast.error(`Couldn't delete that item: ${error.message}`);
+      return;
+    }
+    toast.success(`"${item.title}" was deleted.`);
+  };
+
   const addItem = async (data: Omit<Item, "id" | "date">) => {
     const { data: inserted, error } = await supabase
       .from("items")
