@@ -15,8 +15,10 @@ import {
   SearchX,
   Mail,
   ImagePlus,
+  Trash2,
 
 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 
@@ -167,6 +169,7 @@ function Index() {
   const [category, setCategory] = useState<"All" | Category>("All");
   const [status, setStatus] = useState<"All" | Status>("All");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Item | null>(null);
 
   const refresh = async () => {
     try {
@@ -213,6 +216,19 @@ function Index() {
         `Couldn't mark that item as claimed: ${error.message}${error.hint ? ` (${error.hint})` : ""}`,
       );
     }
+  };
+
+  const deleteItem = async (item: Item) => {
+    const prev = items;
+    setItems((cur) => cur.filter((i) => i.id !== item.id));
+    setPendingDelete(null);
+    const { error } = await supabase.from("items").delete().eq("id", item.id);
+    if (error) {
+      setItems(prev);
+      toast.error(`Couldn't delete that item: ${error.message}`);
+      return;
+    }
+    toast.success(`"${item.title}" was deleted.`);
   };
 
   const addItem = async (data: Omit<Item, "id" | "date">) => {
@@ -350,7 +366,12 @@ function Index() {
           <section aria-label="Lost and found items">
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {active.map((item) => (
-                <ItemCard key={item.id} item={item} onClaim={() => claimItem(item.id)} />
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  onClaim={() => claimItem(item.id)}
+                  onDelete={() => setPendingDelete(item)}
+                />
               ))}
             </div>
           </section>
@@ -364,7 +385,12 @@ function Index() {
             </h2>
             <div className="grid gap-5 opacity-70 sm:grid-cols-2 lg:grid-cols-3">
               {resolved.map((item) => (
-                <ItemCard key={item.id} item={item} onClaim={() => claimItem(item.id)} />
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  onClaim={() => claimItem(item.id)}
+                  onDelete={() => setPendingDelete(item)}
+                />
               ))}
             </div>
           </section>
@@ -382,11 +408,79 @@ function Index() {
           onSubmit={addItem}
         />
       )}
+
+      {pendingDelete && (
+        <ConfirmDeleteDialog
+          item={pendingDelete}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void deleteItem(pendingDelete)}
+        />
+      )}
     </div>
   );
 }
 
-function ItemCard({ item, onClaim }: { item: Item; onClaim: () => void }) {
+function ConfirmDeleteDialog({
+  item,
+  onCancel,
+  onConfirm,
+}: {
+  item: Item;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Confirm delete"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl"
+      >
+        <h2 className="text-lg font-bold">Are you sure you want to delete this item?</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          &ldquo;{item.title}&rdquo; will be removed for everyone. This can&rsquo;t be undone.
+        </p>
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="flex-1 rounded-lg bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:bg-destructive/90"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ItemCard({
+  item,
+  onClaim,
+  onDelete,
+}: {
+  item: Item;
+  onClaim: () => void;
+  onDelete: () => void;
+}) {
   const Icon = CATEGORY_ICON[item.category];
   const claimed = item.status === "Claimed";
   return (
@@ -425,14 +519,25 @@ function ItemCard({ item, onClaim }: { item: Item; onClaim: () => void }) {
             <Mail className="h-3.5 w-3.5 shrink-0" /> {item.contact}
           </p>
         </div>
-        {!claimed && (
+        <div className="mt-3 flex gap-2">
+          {!claimed && (
+            <button
+              onClick={onClaim}
+              className="flex-1 rounded-lg border border-primary/30 bg-accent px-3 py-2 text-sm font-semibold text-accent-foreground transition hover:bg-primary hover:text-primary-foreground"
+            >
+              Mark as Claimed
+            </button>
+          )}
           <button
-            onClick={onClaim}
-            className="mt-3 w-full rounded-lg border border-primary/30 bg-accent px-3 py-2 text-sm font-semibold text-accent-foreground transition hover:bg-primary hover:text-primary-foreground"
+            onClick={onDelete}
+            aria-label={`Delete ${item.title}`}
+            title="Delete this item"
+            className={`${claimed ? "w-full" : "shrink-0"} inline-flex items-center justify-center gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive hover:text-destructive-foreground`}
           >
-            Mark as Claimed
+            <Trash2 className="h-4 w-4" />
+            {claimed && <span>Delete</span>}
           </button>
-        )}
+        </div>
       </div>
     </article>
   );
