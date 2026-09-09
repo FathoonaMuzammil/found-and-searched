@@ -172,8 +172,9 @@ function Index() {
     try {
       setItems(await fetchItems());
       setLoadError("");
-    } catch {
-      setLoadError("Couldn't load items right now. Please refresh the page.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setLoadError(`Couldn't load items right now: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -208,7 +209,9 @@ function Index() {
     const { error } = await supabase.from("items").update({ status: "Claimed" }).eq("id", id);
     if (error) {
       setItems(prev);
-      setLoadError("Couldn't mark that item as claimed. Please try again.");
+      setLoadError(
+        `Couldn't mark that item as claimed: ${error.message}${error.hint ? ` (${error.hint})` : ""}`,
+      );
     }
   };
 
@@ -227,7 +230,11 @@ function Index() {
       .select()
       .single();
     if (error || !inserted) {
-      setLoadError("Couldn't post that item. Please try again.");
+      const detail = error
+        ? [error.message, error.details, error.hint].filter(Boolean).join(" — ")
+        : "No row was returned.";
+      console.error("Insert item failed:", error);
+      setLoadError(`Couldn't post that item: ${detail}`);
       return;
     }
     setItems((prev) => [rowToItem(inserted as ItemRow), ...prev]);
