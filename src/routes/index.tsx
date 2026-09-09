@@ -523,8 +523,11 @@ function ReportDialog({
     }
   };
 
-  const doSubmit = () => {
-    onSubmit({
+  const [saving, setSaving] = useState(false);
+
+  const doSubmit = async () => {
+    setSaving(true);
+    await onSubmit({
       title: form.title.trim(),
       description: form.description.trim() || "No description provided.",
       category: form.category,
@@ -533,6 +536,7 @@ function ReportDialog({
       contact: form.contact.trim(),
       ...(photo ? { photo } : {}),
     });
+    setSaving(false);
     onClose();
   };
 
