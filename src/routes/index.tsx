@@ -468,6 +468,9 @@ function ReportDialog({
   });
   const [error, setError] = useState("");
   const [duplicates, setDuplicates] = useState<Item[] | null>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState("");
+  const [photoLoading, setPhotoLoading] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -480,6 +483,27 @@ function ReportDialog({
     setDuplicates(null);
   };
 
+  const handlePhoto = async (file: File | undefined) => {
+    setPhotoError("");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Please choose an image file (JPG, PNG, GIF or WebP).");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError("That image is larger than 5MB. Please pick a smaller one.");
+      return;
+    }
+    setPhotoLoading(true);
+    try {
+      setPhoto(await fileToCompressedDataUrl(file));
+    } catch {
+      setPhotoError("Sorry, that image couldn't be loaded.");
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
+
   const doSubmit = () => {
     onSubmit({
       title: form.title.trim(),
@@ -488,9 +512,11 @@ function ReportDialog({
       location: form.location.trim(),
       status: form.status,
       contact: form.contact.trim(),
+      ...(photo ? { photo } : {}),
     });
     onClose();
   };
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
