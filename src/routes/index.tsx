@@ -468,6 +468,53 @@ function findDuplicates(form: {
   });
 }
 
+/** At least one alphabetic word of 2+ letters (rejects "1234", "@#$%", "a b c"). */
+function hasRealWord(value: string) {
+  return /[A-Za-z]{2,}/.test(value);
+}
+
+type FieldErrors = Partial<Record<"title" | "description" | "location" | "contact", string>>;
+
+function validateForm(form: {
+  title: string;
+  description: string;
+  location: string;
+  contact: string;
+}): FieldErrors {
+  const errors: FieldErrors = {};
+  const title = form.title.trim();
+  const description = form.description.trim();
+  const location = form.location.trim();
+  const contact = form.contact.trim();
+
+  if (!title) errors.title = "Please add a title.";
+  else if (title.length < 3) errors.title = "Title must be at least 3 characters.";
+  else if (!hasRealWord(title))
+    errors.title = "Please use real words — a title can't be only numbers or symbols.";
+  else if (title.length > 100) errors.title = "Title must be under 100 characters.";
+
+  if (!description) errors.description = "Please add a description.";
+  else if (description.length < 10)
+    errors.description = "Description must be at least 10 characters.";
+  else if (!hasRealWord(description))
+    errors.description = "Please describe the item in real words.";
+  else if (description.length > 1000)
+    errors.description = "Description must be under 1000 characters.";
+
+  if (!location) errors.location = "Please add where it was lost or found.";
+  else if (location.length < 3) errors.location = "Location must be at least 3 characters.";
+  else if (!hasRealWord(location))
+    errors.location = "Please use real words for the location.";
+
+  const isEmail = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(contact);
+  const isPhone = /^[+()\d][\d\s().-]{6,}$/.test(contact);
+  if (!contact) errors.contact = "Please add an email or phone number.";
+  else if (!isEmail && !isPhone)
+    errors.contact = "Enter a valid email address or phone number.";
+
+  return errors;
+}
+
 function ReportDialog({
   existingItems,
   onClose,
