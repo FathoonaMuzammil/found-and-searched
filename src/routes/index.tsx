@@ -583,7 +583,7 @@ function ReportDialog({
     setSaving(true);
     await onSubmit({
       title: form.title.trim(),
-      description: form.description.trim() || "No description provided.",
+      description: form.description.trim(),
       category: form.category,
       location: form.location.trim(),
       status: form.status,
