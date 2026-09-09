@@ -571,6 +571,26 @@ function ReportDialog({
             />
           </div>
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+
+          {duplicates && (
+            <div
+              role="alert"
+              className="rounded-lg border border-found/40 bg-found/10 p-4 text-sm"
+            >
+              <p className="font-semibold text-found-foreground">
+                A similar item already exists — do you still want to submit?
+              </p>
+              <ul className="mt-2 space-y-1 text-muted-foreground">
+                {duplicates.slice(0, 3).map((d) => (
+                  <li key={d.id} className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    <span className="font-medium text-foreground">{d.title}</span>
+                    <span>· {d.location}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex gap-3">
@@ -581,12 +601,22 @@ function ReportDialog({
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-          >
-            Post Item
-          </button>
+          {duplicates ? (
+            <button
+              type="button"
+              onClick={doSubmit}
+              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              Submit Anyway
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              Post Item
+            </button>
+          )}
         </div>
       </form>
     </div>
