@@ -17,6 +17,8 @@ export type Database = {
       items: {
         Row: {
           category: string
+          claimed_at: string | null
+          claimed_by: string | null
           contact: string
           created_at: string
           description: string
@@ -29,6 +31,8 @@ export type Database = {
         }
         Insert: {
           category?: string
+          claimed_at?: string | null
+          claimed_by?: string | null
           contact?: string
           created_at?: string
           description?: string
@@ -41,6 +45,8 @@ export type Database = {
         }
         Update: {
           category?: string
+          claimed_at?: string | null
+          claimed_by?: string | null
           contact?: string
           created_at?: string
           description?: string
