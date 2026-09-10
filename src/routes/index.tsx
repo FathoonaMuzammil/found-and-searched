@@ -59,7 +59,9 @@ interface Item {
   contact: string;
   date: string; // ISO
   photo?: string; // data URL
+  postedBy?: string | null;
 }
+
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
 
