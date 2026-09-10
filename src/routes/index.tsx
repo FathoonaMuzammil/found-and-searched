@@ -453,7 +453,9 @@ function Index() {
                   key={item.id}
                   item={item}
                   onClaim={() => claimItem(item.id)}
+                  canDelete={!!user && item.postedBy === user.id}
                   onDelete={() => setPendingDelete(item)}
+
                 />
               ))}
             </div>
