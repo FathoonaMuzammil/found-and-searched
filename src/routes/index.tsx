@@ -233,9 +233,13 @@ function Index() {
   const resolved = filtered.filter((i) => i.status === "Claimed");
 
   const claimItem = async (id: string) => {
+    if (!user) return requireLogin();
     const prev = items;
     setItems((cur) => cur.map((i) => (i.id === id ? { ...i, status: "Claimed" } : i)));
-    const { error } = await supabase.from("items").update({ status: "Claimed" }).eq("id", id);
+    const { error } = await supabase
+      .from("items")
+      .update({ status: "Claimed", claimed_by: user.id, claimed_at: new Date().toISOString() })
+      .eq("id", id);
     if (error) {
       setItems(prev);
       setLoadError(
@@ -243,6 +247,7 @@ function Index() {
       );
     }
   };
+
 
   const deleteItem = async (item: Item) => {
     const prev = items;
