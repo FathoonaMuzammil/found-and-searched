@@ -178,6 +178,24 @@ function Index() {
   const [status, setStatus] = useState<"All" | Status>("All");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Item | null>(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const requireLogin = () => {
+    toast.info("Please log in first.");
+    void navigate({ to: "/auth" });
+  };
+
+  const openReport = () => {
+    if (!user) return requireLogin();
+    setDialogOpen(true);
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    toast.success("You're logged out.");
+  };
+
 
   const refresh = async () => {
     try {
