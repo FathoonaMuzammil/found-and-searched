@@ -305,14 +305,42 @@ function Index() {
               <p className="text-xs text-muted-foreground">Reuniting students with their stuff</p>
             </div>
           </div>
-          <button
-            onClick={() => setDialogOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Report an Item</span>
-            <span className="sm:hidden">Report</span>
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {user ? (
+              <>
+                <span
+                  className="hidden max-w-[180px] truncate text-sm text-muted-foreground sm:inline"
+                  title={user.email ?? ""}
+                >
+                  {user.email}
+                </span>
+                <button
+                  onClick={() => void signOut()}
+                  className="inline-flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition hover:bg-muted"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Log Out</span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => void navigate({ to: "/auth" })}
+                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition hover:bg-muted"
+              >
+                <LogIn className="h-4 w-4" />
+                <span className="hidden sm:inline">Log In</span>
+              </button>
+            )}
+            <button
+              onClick={openReport}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Report an Item</span>
+              <span className="sm:hidden">Report</span>
+            </button>
+          </div>
+
         </div>
       </header>
 
