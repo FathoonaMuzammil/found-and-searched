@@ -178,6 +178,8 @@ function Index() {
   const [status, setStatus] = useState<"All" | Status>("All");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Item | null>(null);
+  const [editItem, setEditItem] = useState<Item | null>(null);
+
   const { user } = useAuth();
   const navigate = useNavigate();
 
