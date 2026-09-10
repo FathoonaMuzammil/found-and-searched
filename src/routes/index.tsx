@@ -791,13 +791,16 @@ function ReportDialog({
       return;
     }
     setError("");
-    const dupes = findDuplicates(form, existingItems);
-    if (dupes.length > 0) {
-      setDuplicates(dupes);
-      return;
+    if (!editItem) {
+      const dupes = findDuplicates(form, existingItems);
+      if (dupes.length > 0) {
+        setDuplicates(dupes);
+        return;
+      }
     }
     void doSubmit();
   };
+
 
   const inputCls =
     "w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -818,7 +821,7 @@ function ReportDialog({
         className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-card p-6 shadow-xl sm:rounded-2xl"
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Report an Item</h2>
+          <h2 className="text-xl font-bold">{editItem ? "Edit Item" : "Report an Item"}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -1031,7 +1034,7 @@ function ReportDialog({
               disabled={saving}
               className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
-              {saving ? "Posting…" : "Post Item"}
+              {saving ? "Saving…" : editItem ? "Save Changes" : "Post Item"}
             </button>
           )}
         </div>
