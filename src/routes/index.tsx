@@ -597,15 +597,18 @@ function ItemCard({
               Mark as Claimed
             </button>
           )}
-          <button
-            onClick={onDelete}
-            aria-label={`Delete ${item.title}`}
-            title="Delete this item"
-            className={`${claimed ? "w-full" : "shrink-0"} inline-flex items-center justify-center gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive hover:text-destructive-foreground`}
-          >
-            <Trash2 className="h-4 w-4" />
-            {claimed && <span>Delete</span>}
-          </button>
+          {canDelete && (
+            <button
+              onClick={onDelete}
+              aria-label={`Delete ${item.title}`}
+              title="Delete this item"
+              className={`${claimed ? "w-full" : "shrink-0"} inline-flex items-center justify-center gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive hover:text-destructive-foreground`}
+            >
+              <Trash2 className="h-4 w-4" />
+              {claimed && <span>Delete</span>}
+            </button>
+          )}
+
         </div>
       </div>
     </article>
