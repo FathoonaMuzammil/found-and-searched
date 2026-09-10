@@ -292,6 +292,35 @@ function Index() {
     setItems((prev) => [rowToItem(inserted as ItemRow), ...prev]);
   };
 
+  const saveEdit = async (data: Omit<Item, "id" | "date">) => {
+    if (!editItem) return;
+    if (!user) return requireLogin();
+    const target = editItem;
+    const { data: updated, error } = await supabase
+      .from("items")
+      .update({
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        location: data.location,
+        status: data.status,
+        contact: data.contact,
+        photo_url: data.photo ?? null,
+      })
+      .eq("id", target.id)
+      .select()
+      .single();
+    if (error || !updated) {
+      toast.error(
+        `Couldn't save those changes: ${error ? error.message : "No row was returned."}`,
+      );
+      return;
+    }
+    setItems((prev) => prev.map((i) => (i.id === target.id ? rowToItem(updated as ItemRow) : i)));
+    toast.success("Item updated.");
+  };
+
+
 
   return (
     <div className="min-h-screen">
