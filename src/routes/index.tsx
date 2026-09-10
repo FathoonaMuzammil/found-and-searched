@@ -703,25 +703,28 @@ function ReportDialog({
   existingItems,
   onClose,
   onSubmit,
+  editItem,
 }: {
   existingItems: Item[];
   onClose: () => void;
   onSubmit: (data: Omit<Item, "id" | "date">) => Promise<void>;
+  editItem?: Item;
 }) {
   const [form, setForm] = useState({
-    title: "",
-    description: "",
-    category: "Other" as Category,
-    location: "",
-    status: "Lost" as "Lost" | "Found",
-    contact: "",
+    title: editItem?.title ?? "",
+    description: editItem?.description ?? "",
+    category: (editItem?.category ?? "Other") as Category,
+    status: (editItem?.status ?? "Lost") as Status,
+    location: editItem?.location ?? "",
+    contact: editItem?.contact ?? "",
   });
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [duplicates, setDuplicates] = useState<Item[] | null>(null);
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<string | null>(editItem?.photo ?? null);
   const [photoError, setPhotoError] = useState("");
   const [photoLoading, setPhotoLoading] = useState(false);
+
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -896,7 +899,9 @@ function ReportDialog({
               >
                 <option value="Lost">Lost</option>
                 <option value="Found">Found</option>
+                {editItem && <option value="Claimed">Claimed</option>}
               </select>
+
             </div>
           </div>
           <div>
