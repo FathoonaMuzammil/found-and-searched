@@ -178,6 +178,8 @@ function Index() {
   const [status, setStatus] = useState<"All" | Status>("All");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Item | null>(null);
+  const [editItem, setEditItem] = useState<Item | null>(null);
+
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -289,6 +291,35 @@ function Index() {
     }
     setItems((prev) => [rowToItem(inserted as ItemRow), ...prev]);
   };
+
+  const saveEdit = async (data: Omit<Item, "id" | "date">) => {
+    if (!editItem) return;
+    if (!user) return requireLogin();
+    const target = editItem;
+    const { data: updated, error } = await supabase
+      .from("items")
+      .update({
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        location: data.location,
+        status: data.status,
+        contact: data.contact,
+        photo_url: data.photo ?? null,
+      })
+      .eq("id", target.id)
+      .select()
+      .single();
+    if (error || !updated) {
+      toast.error(
+        `Couldn't save those changes: ${error ? error.message : "No row was returned."}`,
+      );
+      return;
+    }
+    setItems((prev) => prev.map((i) => (i.id === target.id ? rowToItem(updated as ItemRow) : i)));
+    toast.success("Item updated.");
+  };
+
 
 
   return (
@@ -619,7 +650,7 @@ function findDuplicates(form: {
   title: string;
   category: Category;
   location: string;
-  status: "Lost" | "Found";
+  status: Status;
 }, items: Item[]): Item[] {
   const norm = (s: string) => s.trim().toLowerCase();
   const titleWords = norm(form.title)
@@ -703,25 +734,28 @@ function ReportDialog({
   existingItems,
   onClose,
   onSubmit,
+  editItem,
 }: {
   existingItems: Item[];
   onClose: () => void;
   onSubmit: (data: Omit<Item, "id" | "date">) => Promise<void>;
+  editItem?: Item;
 }) {
   const [form, setForm] = useState({
-    title: "",
-    description: "",
-    category: "Other" as Category,
-    location: "",
-    status: "Lost" as "Lost" | "Found",
-    contact: "",
+    title: editItem?.title ?? "",
+    description: editItem?.description ?? "",
+    category: (editItem?.category ?? "Other") as Category,
+    status: (editItem?.status ?? "Lost") as Status,
+    location: editItem?.location ?? "",
+    contact: editItem?.contact ?? "",
   });
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [duplicates, setDuplicates] = useState<Item[] | null>(null);
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<string | null>(editItem?.photo ?? null);
   const [photoError, setPhotoError] = useState("");
   const [photoLoading, setPhotoLoading] = useState(false);
+
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -788,13 +822,16 @@ function ReportDialog({
       return;
     }
     setError("");
-    const dupes = findDuplicates(form, existingItems);
-    if (dupes.length > 0) {
-      setDuplicates(dupes);
-      return;
+    if (!editItem) {
+      const dupes = findDuplicates(form, existingItems);
+      if (dupes.length > 0) {
+        setDuplicates(dupes);
+        return;
+      }
     }
     void doSubmit();
   };
+
 
   const inputCls =
     "w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -815,7 +852,7 @@ function ReportDialog({
         className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-card p-6 shadow-xl sm:rounded-2xl"
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Report an Item</h2>
+          <h2 className="text-xl font-bold">{editItem ? "Edit Item" : "Report an Item"}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -896,7 +933,9 @@ function ReportDialog({
               >
                 <option value="Lost">Lost</option>
                 <option value="Found">Found</option>
+                {editItem && <option value="Claimed">Claimed</option>}
               </select>
+
             </div>
           </div>
           <div>
@@ -1026,7 +1065,7 @@ function ReportDialog({
               disabled={saving}
               className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
             >
-              {saving ? "Posting…" : "Post Item"}
+              {saving ? "Saving…" : editItem ? "Save Changes" : "Post Item"}
             </button>
           )}
         </div>
