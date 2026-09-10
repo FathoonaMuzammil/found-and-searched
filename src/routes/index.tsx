@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Laptop,
@@ -16,10 +16,14 @@ import {
   Mail,
   ImagePlus,
   Trash2,
+  LogOut,
+  LogIn,
 
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
 
 
 export const Route = createFileRoute("/")({
@@ -55,7 +59,9 @@ interface Item {
   contact: string;
   date: string; // ISO
   photo?: string; // data URL
+  postedBy?: string | null;
 }
+
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
 
@@ -124,7 +130,9 @@ function rowToItem(row: ItemRow): Item {
       : "Lost") as Status,
     contact: row.contact ?? "",
     date: row.created_at,
+    postedBy: row.posted_by,
     ...(row.photo_url ? { photo: row.photo_url } : {}),
+
   };
 }
 
@@ -170,6 +178,24 @@ function Index() {
   const [status, setStatus] = useState<"All" | Status>("All");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Item | null>(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const requireLogin = () => {
+    toast.info("Please log in first.");
+    void navigate({ to: "/auth" });
+  };
+
+  const openReport = () => {
+    if (!user) return requireLogin();
+    setDialogOpen(true);
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    toast.success("You're logged out.");
+  };
+
 
   const refresh = async () => {
     try {
@@ -207,9 +233,13 @@ function Index() {
   const resolved = filtered.filter((i) => i.status === "Claimed");
 
   const claimItem = async (id: string) => {
+    if (!user) return requireLogin();
     const prev = items;
     setItems((cur) => cur.map((i) => (i.id === id ? { ...i, status: "Claimed" } : i)));
-    const { error } = await supabase.from("items").update({ status: "Claimed" }).eq("id", id);
+    const { error } = await supabase
+      .from("items")
+      .update({ status: "Claimed", claimed_by: user.id, claimed_at: new Date().toISOString() })
+      .eq("id", id);
     if (error) {
       setItems(prev);
       setLoadError(
@@ -217,6 +247,7 @@ function Index() {
       );
     }
   };
+
 
   const deleteItem = async (item: Item) => {
     const prev = items;
@@ -232,6 +263,7 @@ function Index() {
   };
 
   const addItem = async (data: Omit<Item, "id" | "date">) => {
+    if (!user) return requireLogin();
     const { data: inserted, error } = await supabase
       .from("items")
       .insert({
@@ -242,7 +274,9 @@ function Index() {
         status: data.status,
         contact: data.contact,
         photo_url: data.photo ?? null,
+        posted_by: user.id,
       })
+
       .select()
       .single();
     if (error || !inserted) {
@@ -271,14 +305,42 @@ function Index() {
               <p className="text-xs text-muted-foreground">Reuniting students with their stuff</p>
             </div>
           </div>
-          <button
-            onClick={() => setDialogOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Report an Item</span>
-            <span className="sm:hidden">Report</span>
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {user ? (
+              <>
+                <span
+                  className="hidden max-w-[180px] truncate text-sm text-muted-foreground sm:inline"
+                  title={user.email ?? ""}
+                >
+                  {user.email}
+                </span>
+                <button
+                  onClick={() => void signOut()}
+                  className="inline-flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition hover:bg-muted"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Log Out</span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => void navigate({ to: "/auth" })}
+                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition hover:bg-muted"
+              >
+                <LogIn className="h-4 w-4" />
+                <span className="hidden sm:inline">Log In</span>
+              </button>
+            )}
+            <button
+              onClick={openReport}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Report an Item</span>
+              <span className="sm:hidden">Report</span>
+            </button>
+          </div>
+
         </div>
       </header>
 
@@ -353,7 +415,7 @@ function Index() {
               yourself.
             </p>
             <button
-              onClick={() => setDialogOpen(true)}
+              onClick={openReport}
               className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" /> Report an Item
@@ -370,7 +432,9 @@ function Index() {
                   key={item.id}
                   item={item}
                   onClaim={() => claimItem(item.id)}
+                  canDelete={!!user && item.postedBy === user.id}
                   onDelete={() => setPendingDelete(item)}
+
                 />
               ))}
             </div>
@@ -389,7 +453,9 @@ function Index() {
                   key={item.id}
                   item={item}
                   onClaim={() => claimItem(item.id)}
+                  canDelete={!!user && item.postedBy === user.id}
                   onDelete={() => setPendingDelete(item)}
+
                 />
               ))}
             </div>
@@ -398,7 +464,7 @@ function Index() {
       </main>
 
       <footer className="border-t py-6 text-center text-xs text-muted-foreground">
-        Campus Lost &amp; Found — a community board for students. No account needed.
+        Campus Lost &amp; Found — a community board for students. Browse freely; log in to post.
       </footer>
 
       {dialogOpen && (
@@ -476,11 +542,14 @@ function ItemCard({
   item,
   onClaim,
   onDelete,
+  canDelete,
 }: {
   item: Item;
   onClaim: () => void;
   onDelete: () => void;
+  canDelete: boolean;
 }) {
+
   const Icon = CATEGORY_ICON[item.category];
   const claimed = item.status === "Claimed";
   return (
@@ -528,15 +597,18 @@ function ItemCard({
               Mark as Claimed
             </button>
           )}
-          <button
-            onClick={onDelete}
-            aria-label={`Delete ${item.title}`}
-            title="Delete this item"
-            className={`${claimed ? "w-full" : "shrink-0"} inline-flex items-center justify-center gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive hover:text-destructive-foreground`}
-          >
-            <Trash2 className="h-4 w-4" />
-            {claimed && <span>Delete</span>}
-          </button>
+          {canDelete && (
+            <button
+              onClick={onDelete}
+              aria-label={`Delete ${item.title}`}
+              title="Delete this item"
+              className={`${claimed ? "w-full" : "shrink-0"} inline-flex items-center justify-center gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-sm font-semibold text-destructive transition hover:bg-destructive hover:text-destructive-foreground`}
+            >
+              <Trash2 className="h-4 w-4" />
+              {claimed && <span>Delete</span>}
+            </button>
+          )}
+
         </div>
       </div>
     </article>
