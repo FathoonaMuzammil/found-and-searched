@@ -130,7 +130,9 @@ function rowToItem(row: ItemRow): Item {
       : "Lost") as Status,
     contact: row.contact ?? "",
     date: row.created_at,
+    postedBy: row.posted_by,
     ...(row.photo_url ? { photo: row.photo_url } : {}),
+
   };
 }
 
