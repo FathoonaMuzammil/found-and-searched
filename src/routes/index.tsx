@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Laptop,
@@ -16,10 +16,14 @@ import {
   Mail,
   ImagePlus,
   Trash2,
+  LogOut,
+  LogIn,
 
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
 
 
 export const Route = createFileRoute("/")({
