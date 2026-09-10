@@ -263,6 +263,7 @@ function Index() {
   };
 
   const addItem = async (data: Omit<Item, "id" | "date">) => {
+    if (!user) return requireLogin();
     const { data: inserted, error } = await supabase
       .from("items")
       .insert({
@@ -273,7 +274,9 @@ function Index() {
         status: data.status,
         contact: data.contact,
         photo_url: data.photo ?? null,
+        posted_by: user.id,
       })
+
       .select()
       .single();
     if (error || !inserted) {
