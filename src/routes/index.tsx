@@ -542,11 +542,14 @@ function ItemCard({
   item,
   onClaim,
   onDelete,
+  canDelete,
 }: {
   item: Item;
   onClaim: () => void;
   onDelete: () => void;
+  canDelete: boolean;
 }) {
+
   const Icon = CATEGORY_ICON[item.category];
   const claimed = item.status === "Claimed";
   return (
