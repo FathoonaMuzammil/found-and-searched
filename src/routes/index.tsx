@@ -415,7 +415,7 @@ function Index() {
               yourself.
             </p>
             <button
-              onClick={() => setDialogOpen(true)}
+              onClick={openReport}
               className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" /> Report an Item
@@ -432,7 +432,9 @@ function Index() {
                   key={item.id}
                   item={item}
                   onClaim={() => claimItem(item.id)}
+                  canDelete={!!user && item.postedBy === user.id}
                   onDelete={() => setPendingDelete(item)}
+
                 />
               ))}
             </div>
@@ -460,7 +462,7 @@ function Index() {
       </main>
 
       <footer className="border-t py-6 text-center text-xs text-muted-foreground">
-        Campus Lost &amp; Found — a community board for students. No account needed.
+        Campus Lost &amp; Found — a community board for students. Browse freely; log in to post.
       </footer>
 
       {dialogOpen && (
