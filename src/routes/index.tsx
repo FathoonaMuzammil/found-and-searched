@@ -619,7 +619,7 @@ function findDuplicates(form: {
   title: string;
   category: Category;
   location: string;
-  status: "Lost" | "Found";
+  status: Status;
 }, items: Item[]): Item[] {
   const norm = (s: string) => s.trim().toLowerCase();
   const titleWords = norm(form.title)
